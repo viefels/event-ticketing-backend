@@ -7,7 +7,7 @@ import { z } from 'zod';
 const router = express.Router();
 
 const createOrderSchema = z.object({
-  bookingId: z.string().uuid(),
+  bookingId: z.uuid(),
   amount: z.number().positive(),
 });
 

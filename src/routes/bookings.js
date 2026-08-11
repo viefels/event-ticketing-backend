@@ -8,14 +8,14 @@ const router = express.Router();
 
 const lockSeatSchema = z.object({
   seatNumber: z.string().min(1),
-  eventId: z.string().uuid(),
-  userId: z.string().uuid(), 
+  eventId: z.uuid(),
+  userId: z.uuid(), 
 });
 
 const bookSchema = z.object({
   seatNumber: z.string().min(1),
-  eventId: z.string().uuid(),
-  userId: z.string().uuid(),
+  eventId: z.uuid(),
+  userId: z.uuid(),
 });
 
 router.post('/lock-seat', isAuthenticated, isAttendee, validateBody(lockSeatSchema), lockSeat);

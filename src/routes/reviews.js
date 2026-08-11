@@ -9,8 +9,8 @@ const router = express.Router();
 const createReviewSchema = z.object({
   rating: z.number().int().min(1).max(5),
   comment: z.string().optional(),
-  userId: z.string().uuid(),
-  eventId: z.string().uuid(),
+  userId: z.uuid(),
+  eventId: z.uuid(),
 });
 
 router.post('/', isAuthenticated, isAttendee, validateBody(createReviewSchema), createReview);

@@ -7,7 +7,7 @@ import { z } from 'zod';
 const router = express.Router();
 
 const validateTicketSchema = z.object({
-  ticketId: z.string().uuid(),
+  ticketId: z.uuid(),
   qrCode: z.string().min(1),
 });
 
