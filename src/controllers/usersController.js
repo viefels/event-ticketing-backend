@@ -1,4 +1,5 @@
 import models from '../models/index.js';
+import bcrypt from 'bcryptjs';
 
 export async function register(req, res) {
   try {
@@ -12,7 +13,14 @@ export async function register(req, res) {
       });
     }
 
-    const user = await models.User.create({ email, password, name });
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await models.User.create({ 
+        email, 
+        password: hashedPassword, 
+        name 
+    });
+    
     return res.status(201).json({ 
       success: true, 
       message: 'User registered successfully', 
@@ -30,7 +38,7 @@ export async function register(req, res) {
 export async function login(req, res) {
   try {
     const { email, password } = req.body;
-    const user = await models.User.findOne({ where: { email, password } });
+    const user = await models.User.findOne({ where: { email } });
 
     if (!user) {
       return res.status(401).json({ 
@@ -39,12 +47,24 @@ export async function login(req, res) {
       });
     }
     
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+       return res.status(401).json({ 
+        success: false, 
+        error: 'Invalid email or password' 
+      });
+    }
+
     const token = `token-${user.id}`; 
     return res.status(200).json({ 
       success: true, 
       message: 'Logged In successfully', 
       token, 
-      profile: { email: user.email, name: user.name, id: user.id } 
+      profile: { 
+        email: user.email, 
+        name: user.name, 
+        id: user.id 
+      } 
     });
   } catch (error) {
     console.log(error);
