@@ -57,11 +57,34 @@ export async function updateEvent(req, res) {
       });
     }
 
-    await event.update({ title, description, date, totalSeats, availableSeats, price });
+    if (event.organizerId !== req.user.uid) {
+      return res.status(403).json({
+        success: false,
+        error: "Access denied. You can only modify events you created."
+      });
+    }
+
+    const updates = {};
+    if (title !== undefined) updates.title = title;
+    if (description !== undefined) updates.description = description;
+    if (date !== undefined) updates.date = date;
+    if (totalSeats !== undefined) updates.totalSeats = totalSeats;
+    if (availableSeats !== undefined) updates.availableSeats = availableSeats;
+    if (price !== undefined) updates.price = price;
+
+    
+    if(!updates){
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No updates provided' 
+      });
+    }
+    const updatedEvent = await event.update(updates);
+
     return res.status(200).json({ 
       success: true, 
       message: `Event ${id} updated`, 
-      event 
+      event: updatedEvent 
     });
   } catch (error) {
     console.log(error);

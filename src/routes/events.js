@@ -11,7 +11,7 @@ const createEventSchema = z.object({
   description: z.string().optional(),
   date: z.iso.datetime(),
   totalSeats: z.number().int().positive(),
-  price: z.number().min(0),
+  price: z.number().min(0)
 });
 
 const updateEventSchema = z.object({
@@ -21,7 +21,7 @@ const updateEventSchema = z.object({
   totalSeats: z.number().int().positive().optional(),
   availableSeats: z.number().int().min(0).optional(),
   price: z.number().min(0).optional(),
-});
+}).strict();
 
 router.post('/', isAuthenticated, isOrganizer, validateBody(createEventSchema), createEvent);
 router.get('/', getEvents);
