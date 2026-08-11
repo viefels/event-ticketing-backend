@@ -11,6 +11,6 @@ const lockSeatSchema = z.object({
   eventId: z.uuid(),
 });
 
-router.post('/lock-seat', isAuthenticated, isAttendee, validateBody(lockSeatSchema), lockSeat);
+router.post('/seat-lock', isAuthenticated, isAttendee, validateBody(lockSeatSchema), lockSeat);
 
 export default router;

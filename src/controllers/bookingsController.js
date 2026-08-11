@@ -10,6 +10,14 @@ export async function lockSeat(req, res) {
     await models.SeatLock.destroy({ 
       where: { expiresAt: { [Op.lte]: new Date() } } 
     });
+
+    const event = await models.Event.findByPk(eventId);
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        error: "The specified eventId does not exist."
+      });
+    }
     
     const existingLocks = await models.SeatLock.findAll({
       where: { 
