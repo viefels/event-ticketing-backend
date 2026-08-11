@@ -1,5 +1,6 @@
 import models from '../models/index.js';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 export async function register(req, res) {
   try {
@@ -18,7 +19,8 @@ export async function register(req, res) {
     const user = await models.User.create({ 
         email, 
         password: hashedPassword, 
-        name 
+        name,
+        role: req.body.role || 'attendee'
     });
     
     return res.status(201).json({ 
@@ -55,7 +57,14 @@ export async function login(req, res) {
       });
     }
 
-    const token = `token-${user.id}`; 
+    const tokenPayLoad = {
+      uid: user.id,
+      email: user.email,
+      role: user.role
+    };
+
+    const token = jwt.sign(tokenPayLoad, process.env.JWT_SECRET || "mr_v_new_secret_key", { expiresIn: "24hr" });
+    
     return res.status(200).json({ 
       success: true, 
       message: 'Logged In successfully', 
@@ -63,7 +72,8 @@ export async function login(req, res) {
       profile: { 
         email: user.email, 
         name: user.name, 
-        id: user.id 
+        id: user.id,
+        role: user.role
       } 
     });
   } catch (error) {

@@ -1,6 +1,7 @@
 import express from 'express';
 import { createReview, getReviewsByEvent } from '../controllers/reviewsController.js';
 import { validateBody } from '../middleware/validation.js';
+import { isAuthenticated, isAttendee } from '../middleware/auth.middleware.js';
 import { z } from 'zod';
 
 const router = express.Router();
@@ -12,7 +13,7 @@ const createReviewSchema = z.object({
   eventId: z.string().uuid(),
 });
 
-router.post('/', validateBody(createReviewSchema), createReview);
+router.post('/', isAuthenticated, isAttendee, validateBody(createReviewSchema), createReview);
 router.get('/event/:eventId', getReviewsByEvent);
 
 export default router;

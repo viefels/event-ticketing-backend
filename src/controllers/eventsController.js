@@ -9,7 +9,8 @@ export async function createEvent(req, res) {
       date,
       totalSeats,
       availableSeats: totalSeats,
-      price
+      price,
+      organizerId: req.user.uid
     });
     return res.status(201).json({ 
       success: true, 

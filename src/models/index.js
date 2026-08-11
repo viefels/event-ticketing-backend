@@ -26,6 +26,9 @@ const models = {
 };
 
 // Define relationships
+models.User.hasMany(models.Event, { foreignKey: 'organizerId', as: 'events' });
+models.Event.belongsTo(models.User, { foreignKey: 'organizerId', as: 'organizer' });
+
 models.User.hasMany(models.Booking, { foreignKey: 'userId' });
 models.Booking.belongsTo(models.User, { foreignKey: 'userId' });
 

@@ -20,5 +20,10 @@ export default (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false 
     },
+    role: {
+      type: DataTypes.ENUM('attendee', 'organizer'),
+      defaultValue: 'attendee',
+      allowNull: false
+    }
   });
 };
