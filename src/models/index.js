@@ -44,8 +44,14 @@ models.Ticket.belongsTo(models.Event, { foreignKey: 'eventId' });
 models.Event.hasMany(models.SeatLock, { foreignKey: 'eventId' });
 models.SeatLock.belongsTo(models.Event, { foreignKey: 'eventId' });
 
-models.Booking.hasOne(models.Payment, { foreignKey: 'bookingId' });
-models.Payment.belongsTo(models.Booking, { foreignKey: 'bookingId' });
+models.User.hasMany(models.Payment, { foreignKey: 'userId' });
+models.Payment.belongsTo(models.User, { foreignKey: 'userId' });
+
+models.Event.hasMany(models.Payment, { foreignKey: 'eventId' });
+models.Payment.belongsTo(models.Event, { foreignKey: 'eventId' });
+
+// Booking now generated after Payment completes
+models.Booking.hasOne(models.Payment, { foreignKey: 'bookingId', as: 'paymentData', constraints: false });
 
 models.Booking.hasMany(models.Ticket, { foreignKey: 'bookingId' });
 models.Ticket.belongsTo(models.Booking, { foreignKey: 'bookingId' });

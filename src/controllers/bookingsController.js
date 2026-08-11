@@ -4,104 +4,78 @@ import { Op } from 'sequelize';
 
 export async function lockSeat(req, res) {
   try {
-    const { seatNumber, eventId, userId } = req.body;
+    const { seatNumbers, eventId } = req.body;
+    const userId = req.user.uid;
     
-    const existingLock = await models.SeatLock.findOne({
-      where: {
-        seatNumber,
+    await models.SeatLock.destroy({ 
+      where: { expiresAt: { [Op.lte]: new Date() } } 
+    });
+    
+    const existingLocks = await models.SeatLock.findAll({
+      where: { 
+        seatNumber: seatNumbers, 
         eventId,
-        expiresAt: { [Op.gt]: new Date() }
+        lockedBy: { [Op.ne]: userId } 
       }
     });
 
-    if (existingLock) {
+    if (existingLocks.length > 0) {
       return res.status(409).json({ 
         success: false, 
-        error: 'Seat is currently locked' 
+        error: "One or more requested seats are currently locked by other users." 
       });
     }
 
-    const existingBooking = await models.Booking.findOne({ 
-      where: { seatNumber, eventId, status: ['confirmed', 'pending'] } 
+    await models.SeatLock.destroy({
+      where: { seatNumber: seatNumbers, eventId, lockedBy: userId }
     });
-    if (existingBooking) {
+    
+    const activeLockCount = await models.SeatLock.count({
+      where: { lockedBy: userId }
+    });
+
+    if (activeLockCount + seatNumbers.length > 5) {
+      return res.status(403).json({
+        success: false,
+        error: "You cannot lock more than 5 seats without paying. Please complete your checkout for existing seats."
+      });
+    }
+
+    const existingTickets = await models.Ticket.findAll({ 
+      where: { seatNumber: seatNumbers, eventId } 
+    });
+
+    if (existingTickets.length > 0) {
         return res.status(409).json({ 
           success: false, 
-          error: 'Seat is already booked' 
+          error: "One or more requested seats are already booked."
         });
     }
 
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     
-    await models.SeatLock.create({
+    const lockData = seatNumbers.map(seatNumber => ({
       seatNumber,
       eventId,
       lockedBy: userId,
       lockedAt: new Date(),
       expiresAt
-    });
+    }));
+
+    await models.SeatLock.bulkCreate(lockData);
 
     const io = getIO();
-    io.emit('seat-locked', { seatNumber, eventId, userId });
+    io.emit('seats-locked', { seatNumbers, eventId, userId });
     
     return res.status(200).json({ 
       success: true, 
-      message: 'Seat locked temporarily' 
+      message: "Seats locked temporarily"
     });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ 
       success: false, 
-      message: 'Server failed to respond to lock seat request' 
-    });
-  }
-}
-
-export async function bookSeat(req, res) {
-  try {
-    const { seatNumber, eventId, userId } = req.body;
-    
-    const lock = await models.SeatLock.findOne({
-      where: { seatNumber, eventId, lockedBy: userId }
-    });
-
-    if (!lock || lock.expiresAt < new Date()) {
-       const existingBooking = await models.Booking.findOne({ 
-           where: { seatNumber, eventId, status: ['confirmed', 'pending'] } 
-       });
-       if (existingBooking) {
-           return res.status(409).json({ 
-             success: false, 
-             error: 'Seat is already booked' 
-           });
-       }
-    }
-
-    const booking = await models.Booking.create({
-        status: 'pending',
-        seatNumber,
-        eventId,
-        userId,
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000)
-    });
-
-    if (lock) {
-      await lock.destroy();
-    }
-
-    const io = getIO();
-    io.emit('seat-booked', { seatNumber, eventId, bookingId: booking.id });
-    
-    return res.status(201).json({ 
-      success: true, 
-      message: 'Seat booked successfully (pending payment)', 
-      booking 
-    });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Server failed to respond to book seat request' 
+      message: "Server failed to respond to lock seat request" 
     });
   }
 }

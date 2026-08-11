@@ -2,7 +2,8 @@ import models from '../models/index.js';
 
 export async function createReview(req, res) {
   try {
-    const { rating, comment, userId, eventId } = req.body;
+    const { rating, comment, eventId } = req.body;
+    const userId = req.user.uid;
 
     const review = await models.Review.create({
       rating,

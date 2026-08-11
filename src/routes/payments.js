@@ -7,7 +7,8 @@ import { z } from 'zod';
 const router = express.Router();
 
 const createOrderSchema = z.object({
-  bookingId: z.uuid(),
+  seatNumbers: z.array(z.string().min(1)).min(1),
+  eventId: z.uuid(),
   amount: z.number().positive(),
 });
 

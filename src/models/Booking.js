@@ -11,10 +11,6 @@ export default (sequelize) => {
       type: DataTypes.ENUM('pending', 'confirmed', 'cancelled'), 
       defaultValue: 'pending' 
     },
-    seatNumber: { 
-      type: DataTypes.STRING, 
-      allowNull: false 
-    },
     expiresAt: { 
       type: DataTypes.DATE, 
       allowNull: true 

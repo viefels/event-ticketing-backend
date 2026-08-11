@@ -1,121 +1,290 @@
-# Event Ticketing Platform (Backend)
+# Event Ticketing Backend
 
-> Core data layer for an event ticketing platform handling user authentication, real-time seat booking, and simulated payments.
-
-**Author:** Livingstone Sanmi Isaac  
-**Date:** August 2026
-
-## Technology Stack
-*   **Environment:** Node.js (ESM)
-*   **Framework:** Express
-*   **Database ORM:** Sequelize
-*   **Database:** PostgreSQL
-*   **Real-Time Concurrency:** Socket.IO
-*   **Data Validation:** Zod
+A robust, concurrency-safe backend architecture designed for managing event ticket sales. Features include role-based access control, volatile seat lockers via WebSocket broadcasting, and automated mocked payment validation lifecycles that natively prevent race conditions and over-booking.
 
 ---
 
-## 🗄️ Database Models
+## 🏗️ Architecture & Features
 
-| Model | Attributes / Datatypes |
-| :--- | :--- |
-| **User** | `id` (UUID), `email` (String, Unique), `password` (String), `name` (String) |
-| **Event** | `id` (UUID), `title` (String), `description` (Text), `date` (Date), `totalSeats` (Int), `availableSeats` (Int), `price` (Decimal) |
-| **Booking** | `id` (UUID), `status` (Enum: pending, confirmed, cancelled), `seatNumber` (String), `expiresAt` (Date) |
-| **Ticket** | `id` (UUID), `seatNumber` (String), `qrCode` (String), `isValidated` (Boolean, default: false) |
-| **SeatLock** | `id` (UUID), `seatNumber` (String), `lockedBy` (String), `lockedAt` (Date), `expiresAt` (Date) |
-| **Payment** | `id` (UUID), `amount` (Decimal), `status` (Enum: pending, completed, failed), `transactionId` (String) |
-| **Review** | `id` (UUID), `rating` (Int 1-5), `comment` (Text) |
-
-The relationships between models are natively managed via Sequelize (`hasMany`, `belongsTo`, `hasOne`).
+### Core Mechanisms
+*   **Role-Based Security:** Supports `attendee` and `organizer` accounts dynamically. Organizers can only modify their own events. Organizers are completely sandboxed from locking seats, manipulating checkouts, or writing reviews.
+*   **Concurrency Sandbox (`SeatLocks`):** To avoid the "Double-Booking Race Condition," querying `/lock-seat` natively secures physical seats actively for exactly `10 minutes`. Attempting to lock seats automatically scrubs all globally expired locks globally.
+*   **Volatile Limiting:** Attendees can only securely hold a maximum of `5` seats at a given time organically. Attempting to hold more actively halts transactions.
+*   **Checkout Validation Flow:** Checkouts instantiate sandbox transactions (`create-order`). Executing `verify-order` dynamically measures time. If the sandbox breaches exactly `10 minutes`, or fails verification `5 times`, the checkout fails and forces lock obliterations mapping.
 
 ---
 
-## 📡 API Reference & Payloads
+## 🌐 API Flow Pipeline
 
-> Note: All validation is strictly run via **Zod Middlewares**. Standard Zod error signature:
-> `400 Bad Request: { "error": "Validation failed", "details": [ { ...zodError } ] }`
-> All generic server errors return: `500 Internal Server Error: { "error": "Message" }`
+The end-to-end checkout logic must follow this sequence exactly:
+1.  **Authentication Mode:** User runs `POST /api/users/login` and binds the JWT inside the `Authorization: Bearer <TOKEN>` header.
+2.  **Selection (Lock):** User runs `POST /api/bookings/lock-seat` passing an array of `seatNumbers`. This blocks anyone else globally without committing the payment dynamically.
+3.  **Checkout Initialization:** User evaluates total, and queries `POST /api/payments/create-order` feeding their `seatNumbers`. The backend initiates exactly 5 trial allowances internally natively.
+4.  **Transaction Resolution:** The frontend hits `POST /api/payments/verify-order`. On `success: true`: 
+    - Physical `Booking` ledgers map perfectly. 
+    - Volatile `SeatLocks` are globally obliterated organically. 
+    - `Ticket` models drop flawlessly natively.
 
-### 1. User Management (`/api/users`)
+---
 
-*   **POST** `/register`
-    *   **Description:** Register a new user.
-    *   **Request Body:** `{ "email": "user@example.com", "password": "min6chars", "name": "John Doe" }`
-    *   **Success (201):** `{ "message": "User registered successfully", "userId": "uuid-..." }`
-    *   **Errors (400):** `{ "error": "Email already in use" }`
+## 📖 API Documentation
 
-*   **POST** `/login`
-    *   **Description:** Login (dummy access token generation).
-    *   **Request Body:** `{ "email": "user@example.com", "password": "password123" }`
-    *   **Success (200):** `{ "message": "Login successful", "token": "token-...", "userId": "uuid-..." }`
-    *   **Errors (401):** `{ "error": "Invalid credentials" }`
+### 👤 1. Users Layer
+Handles JSON Web Token (JWT) provisioning mapping arrays.
 
-### 2. Event Management (`/api/events`)
+#### `POST /api/users/register`
+Creates a local identity. Defaults to `attendee` if `role` is omitted entirely.
+*   **Request Body:**
+    ```json
+    {
+      "email": "user@test.com",
+      "password": "securepassword123",
+      "name": "Jane Doe",
+      "role": "attendee" 
+    }
+    ```
+*   **Response (201 OK):**
+    ```json
+    {
+      "success": true,
+      "message": "User registered successfully",
+      "userId": "uuid-v4-string"
+    }
+    ```
+*   **Error (400 Bad Request):**
+    ```json
+    {
+      "success": false,
+      "error": "Email already in use"
+    }
+    ```
 
-*   **POST** `/`
-    *   **Request Body:** `{ "title": "Concert", "description": "...", "date": "2026-10-10T19:00:00Z", "totalSeats": 100, "price": 49.99 }`
-    *   **Success (201):** `{ "message": "Event created successfully", "event": { ... } }`
+#### `POST /api/users/login`
+Dynamically binds `uid` arrays returning `Bearer <token>`.
+*   **Request Body:**
+    ```json
+    {
+      "email": "user@test.com",
+      "password": "securepassword123"
+    }
+    ```
+*   **Response (200 OK):**
+    ```json
+    {
+      "success": true,
+      "message": "Logged In successfully",
+      "token": "eyJhb...",
+      "profile": { "email": "...", "name": "...", "id": "...", "role": "attendee" }
+    }
+    ```
+*   **Error (401 Unauthorized):**
+    ```json
+    {
+      "success": false,
+      "error": "Invalid email or password"
+    }
+    ```
 
-*   **GET** `/`
-    *   **Success (200):** `{ "events": [ ... array of events ... ] }`
+---
 
-*   **PUT** `/:id`
-    *   **Request Body:** Fully optional event properties.
-    *   **Success (200):** `{ "message": "Event {id} updated", "event": { ... } }`
-    *   **Errors (404):** `{ "error": "Event not found" }`
+### 🎟️ 2. Events Layer
+Event management ledgers mapped cleanly. 
 
-### 3. Seat Booking / Real-Time (`/api/bookings`)
+#### `POST /api/events` (Organizer Only)
+*   **Headers:** `Authorization: Bearer <token>`
+*   **Request Body:**
+    ```json
+    {
+      "title": "Neon Festival",
+      "description": "Annual music event mapping.",
+      "date": "2026-10-31T20:00:00.000Z",
+      "totalSeats": 500,
+      "price": 99.99
+    }
+    ```
+*   **Response (201 OK):**
+    ```json
+    {
+      "success": true,
+      "message": "Event created successfully",
+      "event": { "id": "uuid-v4", ... }
+    }
+    ```
 
-*   **POST** `/lock-seat`
-    *   **Description:** Implements a temporary 10-minute lock on a seat. Broadcasts a `seat-locked` WebSocket event logic on success.
-    *   **Request Body:** `{ "seatNumber": "A12", "eventId": "uuid-...", "userId": "uuid-..." }`
-    *   **Success (200):** `{ "message": "Seat locked temporarily" }`
-    *   **Errors (409):** `{ "error": "Seat is currently locked" }` OR `{ "error": "Seat is already booked" }`
+#### `PUT /api/events/:id` (Organizer Only)
+Updates configurations natively. Evaluates JWT against the event's `organizerId` organically.
+*   **Request Body:**
+    ```json
+    {
+       "title": "Neon Festival - Day 2",
+       "price": 105.00
+    }
+    ```
+*   **Error (403 Forbidden):**
+    ```json
+    {
+       "success": false,
+       "error": "Access denied. You can only modify events you created."
+    }
+    ```
 
-*   **POST** `/book`
-    *   **Description:** Generates a permanent `pending` booking (expires after 15 mins mapped to payment gateway wait times). Destroys the lock and broadcasts `seat-booked` WebSocket event logic.
-    *   **Request Body:** `{ "seatNumber": "A12", "eventId": "uuid-...", "userId": "uuid-..." }`
-    *   **Success (201):** `{ "message": "Seat booked successfully (pending payment)", "booking": { ... } }`
-    *   **Errors (409):** `{ "error": "Seat is already booked" }`
+---
 
-### 4. Payments Simulator (`/api/payments`)
+### 💺 3. Bookings (Seat Lock Sandbox)
+Volatile seat claim endpoints handling concurrency and locking architectures.
 
-*   **POST** `/create-order`
-    *   **Description:** Triggers a mock pending gateway transaction context.
-    *   **Request Body:** `{ "bookingId": "uuid-...", "amount": 49.99 }`
-    *   **Success (201):** `{ "message": "Order created successfully", "payment": { ... } }`
-    *   **Errors (404/400):** `{ "error": "Booking not found" }` OR `{ "error": "Booking is already confirmed or cancelled" }`
+#### `POST /api/bookings/lock-seat` (Attendee Only)
+Dynamically binds 10-minute hold intervals natively against string arrays. Limit globally bounds at `5`.
+*   **Headers:** `Authorization: Bearer <token>`
+*   **Request Body:**
+    ```json
+    {
+      "seatNumbers": ["A1", "A2"],
+      "eventId": "uuid-v4-string"
+    }
+    ```
+*   **Response (200 OK):**
+    ```json
+    {
+      "success": true,
+      "message": "Seats locked temporarily"
+    }
+    ```
+*   **Error (409 Conflict):**
+    ```json
+    {
+      "success": false,
+      "error": "One or more requested seats are currently locked by other users."
+    }
+    ```
+*   **Error (403 Forbidden):**
+    ```json
+    {
+      "success": false,
+      "error": "You cannot lock more than 5 seats without paying. Please complete your checkout for existing seats."
+    }
+    ```
 
-*   **POST** `/verify-order`
-    *   **Description:** Reconciles the callback status of a mock transaction. Converts Bookings to `confirmed` and auto-generates the `Ticket`. 
-    *   **Request Body:** `{ "transactionId": "txn_...", "success": true }`
-    *   **Success (200):** `{ "message": "Order verified successfully", "ticket": { ... } }` (If `success: true`)
-    *   **Failed (400):** `{ "error": "Payment failed, booking cancelled" }` (If `success: false` - Booking converted to `cancelled` automatically) 
-    *   **Error (404):** `{ "error": "Payment record not found" }`
+---
 
-### 5. Ticket Management (`/api/tickets`)
+### 💳 4. Payments Checkout Processing
+Handles order verification securely tracking states against time limits organically.
 
-*   **GET** `/my-tickets?userId={uuid}`
-    *   **Success (200):** `{ "tickets": [ ... ] }` 
-    *   **Errors (400):** `{ "error": "userId is required" }`
+#### `POST /api/payments/create-order` (Attendee Only)
+Generates physical transaction object mapping inherently.
+*   **Headers:** `Authorization: Bearer <token>`
+*   **Request Body:**
+    ```json
+    {
+      "seatNumbers": ["A1", "A2"],
+      "eventId": "uuid-v4-string",
+      "amount": 199.98
+    }
+    ```
+*   **Response (201 OK):**
+    ```json
+    {
+      "success": true,
+      "message": "Order initiated for checkout verification",
+      "payment": { "transactionId": "txn_897123984_90", "trials": 0, ... }
+    }
+    ```
+*   **Error (400 Bad Request):**
+    ```json
+    {
+       "success": false,
+       "error": "You do not hold active locks for all requested seats or some expired"
+    }
+    ```
 
-*   **GET** `/:ticketId`
-    *   **Description:** Generates an inner-joined ticket summary holding User and Event relationships.
-    *   **Success (200):** `{ "ticket": { ... } }`
-    *   **Errors (404):** `{ "error": "Ticket not found" }`
+#### `POST /api/payments/verify-order` (Attendee Only)
+Mocks webhooks natively triggering ticket creation organically on valid evaluations dynamically.
+*   **Headers:** `Authorization: Bearer <token>`
+*   **Request Body:**
+    ```json
+    {
+      "transactionId": "txn_897123984_90",
+      "success": true
+    }
+    ```
+*   **Response (200 OK):**
+    ```json
+    {
+      "success": true,
+      "message": "Order verified successfully. Cart moved to Bookings.",
+      "booking": { "id": "uuid-v4", "status": "confirmed", ... },
+      "tickets": [...]
+    }
+    ```
+*   **Error (400 Bad Request - Exhausted Trials/Time):**
+    ```json
+    {
+       "success": false,
+       "error": "Maximum payment trials (5) exceeded. Locks destroyed."
+    }
+    ```
+*   **Error (400 Bad Request - Failed Once):**
+    ```json
+    {
+       "success": false,
+       "error": "Payment failed. You have 4 attempts remaining."
+    }
+    ```
 
-*   **POST** `/validate`
-    *   **Description:** Prevents duplicate entry switching `isValidated` state permanently true.
-    *   **Request Body:** `{ "ticketId": "uuid-...", "qrCode": "qr_..." }`
-    *   **Success (200):** `{ "message": "Ticket validated successfully", "ticket": { ... } }`
-    *   **Errors (404/400):** `{ "error": "Ticket not found or invalid QR code" }` OR `{ "error": "Ticket has already been used" }`
+---
 
-### 6. Reviews (`/api/reviews`)
+### 🎟️ 5. Ticket Validation
+Digital entry arrays mapping securely physically.
 
-*   **POST** `/`
-    *   **Request Body:** `{ "rating": 5, "comment": "Amazing experience!", "userId": "uuid-...", "eventId": "uuid-..." }`
-    *   **Success (201):** `{ "message": "Review created successfully", "review": { ... } }`
+#### `GET /api/tickets/my-tickets`
+Returns completely instantiated tickets attached explicitly against the active JWT token natively.
+*   **Headers:** `Authorization: Bearer <token>`
 
-*   **GET** `/event/:eventId`
-    *   **Success (200):** `{ "reviews": [ ... ] }`
+#### `POST /api/tickets/validate`
+Used organically mapping real-world QR scanners logically.
+*   **Headers:** `Authorization: Bearer <token>`
+*   **Request Body:**
+    ```json
+    {
+      "ticketId": "uuid-v4-string",
+      "qrCode": "qr_bookingstring_A1"
+    }
+    ```
+*   **Response (200 OK):**
+    ```json
+    {
+      "success": true,
+      "message": "Ticket validated successfully! Enjoy the event.",
+      "ticket": { "isValidated": true, ... }
+    }
+    ```
+*   **Error (400 Bad Request):**
+    ```json
+    {
+      "success": false,
+      "error": "Ticket has already been successfully validated for entry"
+    }
+    ```
+
+---
+
+### ⭐ 6. Event Reviews
+Dynamically ensures organizers objectively cannot manipulate score systems organically natively.
+
+#### `POST /api/reviews` (Attendee Only)
+*   **Headers:** `Authorization: Bearer <token>`
+*   **Request Body:**
+    ```json
+    {
+      "eventId": "uuid-v4-string",
+      "rating": 5,
+      "comment": "Incredible!"
+    }
+    ```
+*   **Response (201 OK):**
+    ```json
+    {
+      "success": true,
+      "message": "Review added natively successfully"
+    }
+    ```
