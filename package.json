@@ -1,0 +1,35 @@
+{
+  "name": "event-ticketing-backend",
+  "version": "1.0.0",
+  "description": "> Core data layer for an event ticketing platform handling user authentication, real-time seat booking, and simulated payments.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/viefels/event-ticketing-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/viefels/event-ticketing-backend/issues"
+  },
+  "homepage": "https://github.com/viefels/event-ticketing-backend#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "pg": "^8.23.0",
+    "sequelize": "^6.37.8",
+    "socket.io": "^4.8.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
