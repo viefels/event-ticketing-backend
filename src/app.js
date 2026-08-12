@@ -25,8 +25,8 @@ app.use(express.json());
 app.use('/api/users', usersRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/bookings', bookingsRoutes);
-app.use('/api/tickets', ticketsRoutes);
 app.use('/api/payments', paymentsRoutes);
+app.use('/api/tickets', ticketsRoutes);
 app.use('/api/reviews', reviewsRoutes);
 
 // 404 Handler
