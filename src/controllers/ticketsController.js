@@ -1,19 +1,65 @@
 import models from '../models/index.js';
 
-export async function getMyTickets(req, res) {
+export async function getMyTicketsByEventId(req, res) {
   try {
-    const { userId } = req.query; 
-    if (!userId) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'userId is required' 
+    const { uid:userId, role} = req.user;
+
+    const {eventId} = req.params;
+    let tickets;
+
+    if(role === "organizer") {
+
+      const isAuthorized = await models.Event.findOne({
+        where: {
+          id: eventId,
+          organizerId: userId
+        }
+      })
+
+      if(!isAuthorized) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not authorized to view tickets for this event"
+        })
+      }
+      tickets = await models.Ticket.findAll({
+        where: { eventId },
+        attributes: { 
+          exclude: ['updatedAt', 'userId']
+        },
+        include: [
+          { model: models.Event, attributes: ['title', 'date', 'price', 'description'] },
+          { model: models.User, attributes: ['name', 'email'] }
+        ]
       });
     }
+    else{
+      const isAuthorized = await models.Booking.findOne({
+        where: {
+          eventId,
+          userId
+        }
+      })
 
-    const tickets = await models.Ticket.findAll({
-      where: { userId },
-      include: [{ model: models.Event, attributes: ['title', 'date'] }]
-    });
+      if(!isAuthorized) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not authorized to view tickets for this event"
+        })
+      }
+
+      tickets = await models.Ticket.findAll({
+        where: { bookingId: isAuthorized.id },
+        attributes: { 
+          exclude: ['updatedAt', 'userId']
+        },
+        include: [
+          { model: models.Event, attributes: ['title', 'date', 'price', 'description'] },
+          { model: models.User, attributes: ['name', 'email'] }
+        ]
+      });
+    }
+    
 
     return res.status(200).json({ 
       success: true, 
@@ -30,7 +76,9 @@ export async function getMyTickets(req, res) {
 
 export async function getTicketById(req, res) {
   try {
+    const { uid:userId, role} = req.user;
     const { ticketId } = req.params;
+    
     const ticket = await models.Ticket.findByPk(ticketId, {
       include: [
         { model: models.Event, attributes: ['title', 'date', 'price'] },
@@ -43,6 +91,37 @@ export async function getTicketById(req, res) {
         success: false, 
         error: 'Ticket not found' 
       });
+    }
+
+    if(role === "organizer") {
+      const isAuthorized = await models.Event.findOne({
+        where: {
+          id: ticket.eventId,
+          organizerId: userId
+        }
+      })
+
+      if(!isAuthorized) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not authorized to view this ticket"
+        })
+      }
+    }
+    else{
+      const isAuthorized = await models.Booking.findOne({
+        where: {
+          eventId: ticket.eventId,
+          userId
+        }
+      })
+
+      if(!isAuthorized) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not authorized to view this ticket"
+        })
+      }
     }
 
     return res.status(200).json({ 
