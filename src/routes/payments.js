@@ -7,14 +7,11 @@ import { z } from 'zod';
 const router = express.Router();
 
 const createOrderSchema = z.object({
-  seatNumbers: z.array(z.string().min(1)).min(1),
-  eventId: z.uuid(),
-  amount: z.number().positive(),
+  eventId: z.uuid()
 });
 
 const verifyOrderSchema = z.object({
-  transactionId: z.string().min(1),
-  success: z.boolean(),
+  transactionId: z.string().min(8)
 });
 
 router.post('/create-order', isAuthenticated, isAttendee, validateBody(createOrderSchema), createOrder);
