@@ -101,6 +101,11 @@ export async function verifyOrder(req, res) {
         eventId: payment.eventId,
         userId: payment.userId,
       });
+
+      await models.Payment.update(
+        { bookingId: booking.id },
+        { where: { id: payment.id } }
+      );
       
       const ticketData = payment.seatNumbers.map(seatNumber => ({
         seatNumber,

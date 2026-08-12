@@ -21,4 +21,27 @@ export const validateBody = (schema) => {
   };
 };
 
-export default { validateBody };
+export const validateParams = (schema) => {
+  return (req, res, next) => {
+    try {
+      const result = schema.safeParse(req.params);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'Validation failed', 
+          details: result.error.errors 
+        });
+      }
+      
+      next();
+    } catch (err) {
+      return res.status(400).json({ 
+        success: false, 
+        error: err.message || 'Validation error' 
+      });
+    }
+  };
+};
+
+export default { validateBody, validateParams };
