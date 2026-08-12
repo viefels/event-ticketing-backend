@@ -4,7 +4,7 @@ A robust, concurrency-safe backend architecture designed for managing event tick
 
 ---
 
-## 🏗️ Architecture & Features
+##  Architecture & Features
 
 ### Core Mechanisms
 *   **Role-Based Security:** Supports `attendee` and `organizer` accounts dynamically. Organizers can only modify their own events. Organizers are completely sandboxed from locking seats, manipulating checkouts, or writing reviews.
@@ -14,7 +14,7 @@ A robust, concurrency-safe backend architecture designed for managing event tick
 
 ---
 
-## 🌐 API Flow Pipeline
+##  API Flow Pipeline
 
 The end-to-end checkout logic must follow this sequence exactly:
 1.  **Authentication Mode:** User runs `POST /api/users/login` and binds the JWT inside the `Authorization: Bearer <TOKEN>` header.
@@ -27,9 +27,9 @@ The end-to-end checkout logic must follow this sequence exactly:
 
 ---
 
-## 📖 API Documentation
+##  API Documentation
 
-### 👤 1. Users Layer
+###  1. Users Layer
 Handles JSON Web Token (JWT) provisioning mapping arrays.
 
 #### `POST /api/users/register`
@@ -87,7 +87,7 @@ Dynamically binds `uid` arrays returning `Bearer <token>`.
 
 ---
 
-### 🎟️ 2. Events Layer
+###  2. Events Layer
 Event management ledgers mapped cleanly. 
 
 #### `POST /api/events` (Organizer Only)
@@ -130,7 +130,7 @@ Updates configurations natively. Evaluates JWT against the event's `organizerId`
 
 ---
 
-### 💺 3. Bookings (Seat Lock Sandbox)
+###  3. Bookings (Seat Lock Sandbox)
 Volatile seat claim endpoints handling concurrency and locking architectures.
 
 #### `POST /api/bookings/lock-seat` (Attendee Only)
@@ -167,7 +167,7 @@ Dynamically binds 10-minute hold intervals natively against string arrays. Limit
 
 ---
 
-### 💳 4. Payments Checkout Processing
+###  4. Payments Checkout Processing
 Handles order verification securely tracking states against time limits organically.
 
 #### `POST /api/payments/create-order` (Attendee Only)
@@ -233,7 +233,7 @@ Mocks webhooks natively triggering ticket creation organically on valid evaluati
 
 ---
 
-### 🎟️ 5. Ticket Validation
+###  5. Ticket Validation
 Digital entry arrays mapping securely physically.
 
 #### `GET /api/tickets/my-tickets`
@@ -268,7 +268,7 @@ Used organically mapping real-world QR scanners logically.
 
 ---
 
-### ⭐ 6. Event Reviews
+###  6. Event Reviews
 Dynamically ensures organizers objectively cannot manipulate score systems organically natively.
 
 #### `POST /api/reviews` (Attendee Only)
