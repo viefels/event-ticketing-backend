@@ -50,7 +50,6 @@ models.Payment.belongsTo(models.User, { foreignKey: 'userId' });
 models.Event.hasMany(models.Payment, { foreignKey: 'eventId' });
 models.Payment.belongsTo(models.Event, { foreignKey: 'eventId' });
 
-// Booking now generated after Payment completes
 models.Booking.hasOne(models.Payment, { foreignKey: 'bookingId', as: 'paymentData', constraints: false });
 
 models.Booking.hasMany(models.Ticket, { foreignKey: 'bookingId' });
@@ -62,7 +61,6 @@ models.Review.belongsTo(models.User, { foreignKey: 'userId' });
 models.Event.hasMany(models.Review, { foreignKey: 'eventId' });
 models.Review.belongsTo(models.Event, { foreignKey: 'eventId' });
 
-// We sync the tables automatically for now (for development purposes)
 sequelize.sync({ alter: true }).catch(err => console.error('DB Sync Error:', err));
 
 export { sequelize };
